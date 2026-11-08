@@ -27,11 +27,11 @@ const tiersBox = ref<HTMLElement | null>(null)
 const box = reactive({ w: 0, h: 0 })
 const wide = ref(true)
 let boxRO: ResizeObserver | null = null
-const GAP = 6, ROW_GAP = 10, ROW_PAD = 16, LABEL = 78, LABEL_GAP = 10, MAX_W = 118, MIN_W = 22
+const GAP = 6, ROW_GAP = 1, ROW_PAD = 12, LABEL = 56, LABEL_GAP = 8, MAX_W = 118, MIN_W = 22
 const rowsFor = (n: number, w: number, inner: number) => Math.ceil(n / Math.max(1, Math.floor((inner + GAP) / (w + GAP))))
 const fit = computed(() => {
-  const inner = box.w - LABEL - LABEL_GAP - ROW_PAD
-  const avail = box.h - ROW_GAP * (ALL_TIERS.length - 1)
+  const inner = box.w - LABEL - LABEL_GAP - 10
+  const avail = box.h - 2 - ROW_GAP * (ALL_TIERS.length - 1)
   const counts = ALL_TIERS.map((k) => state.tiers[k].length + 1) // +1 — место под входящую карточку
   const need = (w: number) => counts.map((n) => { const r = rowsFor(n, w, inner); return r * w * 1.5 + (r - 1) * GAP + ROW_PAD })
   let w = MAX_W
@@ -186,21 +186,28 @@ async function saveImage() {
   >
     <div class="left">
       <div class="toolbar">
-        <input v-model="state.name" class="name" maxlength="40" placeholder="Чей тирлист?" />
-        <span v-if="state.isXias" class="pill">тирлист Xias · подвинь постер — станет твоим</span>
+        <div class="title">
+          <input v-model="state.name" class="name" maxlength="40" placeholder="Мой тирлист" aria-label="Название тирлиста" />
+          <span class="sub">{{ total ? `оценено ${total}` : 'перетащи фильм из каталога' }}<template v-if="state.isXias"> · это тирлист Xias</template></span>
+        </div>
         <div class="tools">
-          <button class="btn deck-btn" :disabled="!pool.length" @click="startQuick">
+          <button class="cta" :disabled="!pool.length" title="Раскладывать по одной карточке" @click="startQuick">
             <svg viewBox="0 0 24 24"><rect x="8" y="3" width="11" height="15" rx="2.5" transform="rotate(12 13.5 10.5)" /><rect x="4" y="5.5" width="11" height="15" rx="2.5" /></svg>
-            Карточки <small>{{ pool.length }}</small>
+            Карточки
           </button>
-          <span class="icon-btn help" tabindex="0" aria-label="Подсказка">?<span class="tip">Тащи постеры или жми на них. Быстрее: наведи и нажми <kbd>S</kbd><kbd>A</kbd><kbd>B</kbd><kbd>C</kbd><kbd>D</kbd>, <kbd>X</kbd> — обратно в каталог, <kbd>Ctrl Z</kbd> — отменить.</span></span>
-          <button class="icon-btn" :disabled="!canUndo" title="Отменить (Ctrl+Z)" aria-label="Отменить" @click="undo">
-            <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
-          </button>
-          <button class="icon-btn" :disabled="shooting || !total" title="Сохранить картинкой" aria-label="Сохранить картинкой" @click="saveImage">
-            <svg v-if="!shooting" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4" /><circle cx="9" cy="9" r="2" /><path d="m21 15-5-5L5 21" /></svg>
-            <span v-else class="spin" />
-          </button>
+          <div class="group">
+            <button :disabled="!canUndo" title="Отменить · Ctrl+Z" aria-label="Отменить" @click="undo">
+              <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
+            </button>
+            <button :disabled="shooting || !total" title="Сохранить картинкой" aria-label="Сохранить картинкой" @click="saveImage">
+              <svg v-if="!shooting" viewBox="0 0 24 24"><path d="M12 15V3" /><path d="m7 10 5 5 5-5" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
+              <span v-else class="spin" />
+            </button>
+            <span class="help" tabindex="0" aria-label="Подсказка">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6" /><path d="M12 17.2h.01" /></svg>
+              <span class="tip">Перетаскивай постеры или нажимай на них. Быстрее: наведи и нажми <kbd>S</kbd><kbd>A</kbd><kbd>B</kbd><kbd>C</kbd><kbd>D</kbd>. <kbd>X</kbd> вернёт в каталог, <kbd>Ctrl Z</kbd> отменит.</span>
+            </span>
+          </div>
         </div>
       </div>
 
@@ -274,40 +281,62 @@ async function saveImage() {
 }
 .left { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 
-/* ── панель над тирами ── */
-.toolbar { display: flex; align-items: center; gap: 10px; padding: 0 2px 12px; min-width: 0; }
+/* ── панель над тирами: спокойная, одна строка ── */
+.toolbar { display: flex; align-items: center; gap: 12px; padding: 2px 2px 12px 4px; min-width: 0; }
+.title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .name {
-  flex: 1 1 160px; min-width: 0;
-  background: transparent; border: 0; padding: 2px 0;
-  font: 800 30px/1.1 var(--font-body); letter-spacing: -0.03em;
-  background-image: var(--grad);
-  -webkit-background-clip: text; background-clip: text;
-  color: transparent;
-  caret-color: var(--accent);
+  width: 100%; min-width: 0;
+  background: transparent; border: 0; padding: 0;
+  font: 700 20px/1.2 var(--font-body); letter-spacing: -0.02em; color: var(--text);
+  text-overflow: ellipsis;
 }
+.name::placeholder { color: var(--text); opacity: 1; }
 .name:focus { outline: none; }
-.name::placeholder { color: var(--muted); -webkit-text-fill-color: var(--muted); }
-.pill { font: 600 12px var(--font-body); color: var(--text); background: var(--accent-soft); box-shadow: inset 0 0 0 1px rgba(255, 43, 214, 0.35); padding: 6px 12px; border-radius: 99px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.name:focus::placeholder { color: var(--muted); }
+.sub { font: 500 12.5px var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tools { display: flex; gap: 8px; align-items: center; flex: none; }
-.deck-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
-.deck-btn small { font: 700 11.5px var(--font-body); background: rgba(0, 0, 0, 0.22); border-radius: 99px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
-.icon-btn {
-  width: 40px; height: 40px; border-radius: 14px;
-  display: grid; place-items: center;
-  background: var(--surface-2); border: 0; color: var(--text);
-  box-shadow: inset 0 0 0 1px var(--line);
-  cursor: pointer; transition: background 0.15s, transform 0.1s;
+.cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 38px; padding: 0 16px 0 13px; border: 0; border-radius: 12px;
+  background: var(--text); color: var(--on-tier);
+  font: 700 13.5px var(--font-body); cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.2s, opacity 0.15s;
 }
-.icon-btn:hover:not(:disabled) { background: var(--surface-3); }
-.icon-btn:active:not(:disabled) { transform: scale(0.94); }
-.icon-btn:disabled { opacity: 0.35; cursor: default; }
-.icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line-2); border-top-color: var(--accent); animation: spin 0.7s linear infinite; }
+.cta svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; }
+.cta:hover:not(:disabled) { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12), 0 8px 24px -10px rgba(255, 255, 255, 0.5); }
+.cta:active:not(:disabled) { transform: scale(0.97); }
+.cta:disabled { opacity: 0.35; cursor: default; }
+.group { display: flex; padding: 3px; gap: 2px; border-radius: 13px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.group > button, .group > .help {
+  width: 32px; height: 32px; border: 0; border-radius: 10px;
+  display: grid; place-items: center;
+  background: transparent; color: var(--text-2); cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.group > button:hover:not(:disabled), .group > .help:hover { background: var(--surface-3); color: var(--text); }
+.group > button:disabled { opacity: 0.3; cursor: default; }
+.group svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.spin { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--line-2); border-top-color: var(--text); animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.help { position: relative; cursor: help; }
+.help .tip {
+  position: absolute; top: calc(100% + 10px); right: -3px; z-index: 40; width: 290px;
+  padding: 12px 14px; border-radius: 14px;
+  background: var(--surface-solid); box-shadow: var(--shadow-lg);
+  font: 500 13px/1.85 var(--font-body); color: var(--text-2); text-align: left;
+  opacity: 0; transform: translateY(-4px); pointer-events: none; transition: opacity 0.15s, transform 0.15s;
+}
+.help:hover .tip, .help:focus .tip { opacity: 1; transform: none; }
 
 /* ── тиры: неоновые объёмные плитки, всегда влезают без скролла ── */
 .tiers-box { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
-.capture { display: flex; flex-direction: column; gap: 10px; min-height: 100%; }
+.capture {
+  display: flex; flex-direction: column; gap: 0; min-height: 100%;
+  background: var(--surface);
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1px var(--line), 0 24px 60px -30px rgba(0, 0, 0, 0.95);
+  overflow: hidden;
+}
 .hint { color: var(--muted); font: 500 12.5px/2.1 var(--font-body); margin: 12px 4px 6px; }
 kbd {
   font: 700 11px/1 var(--font-body);
@@ -341,15 +370,6 @@ kbd {
 .cols button { width: 30px; height: 28px; border: 0; border-radius: 9px; background: transparent; color: var(--text-2); font: 700 12.5px var(--font-body); cursor: pointer; }
 .cols button:hover { color: var(--text); }
 .cols button.on { background: var(--text); color: var(--on-tier); }
-.help { position: relative; font: 800 15px var(--font-body); cursor: help; }
-.help .tip {
-  position: absolute; top: calc(100% + 10px); right: 0; z-index: 40; width: 300px;
-  padding: 12px 14px; border-radius: 16px;
-  background: var(--surface-solid); box-shadow: var(--shadow-lg);
-  font: 500 13px/1.9 var(--font-body); color: var(--text-2); text-align: left;
-  opacity: 0; transform: translateY(-4px); pointer-events: none; transition: opacity 0.15s, transform 0.15s;
-}
-.help:hover .tip, .help:focus .tip { opacity: 1; transform: none; }
 .search {
   display: flex; align-items: center; gap: 8px;
   height: 44px; padding: 0 14px;
@@ -379,11 +399,11 @@ kbd {
 
 /* ── картинка ── */
 .shot-title { display: none; }
-.capture.shot { height: auto; padding: 26px; width: 1200px; background: radial-gradient(900px 500px at 0% 0%, rgba(255, 43, 214, 0.22), transparent 70%), radial-gradient(900px 600px at 100% 100%, rgba(34, 228, 255, 0.18), transparent 70%), #0b0716; }
+.capture.shot { height: auto; padding: 22px 22px 8px; width: 1200px; border-radius: 0; background: radial-gradient(900px 500px at 0% 0%, rgba(255, 43, 214, 0.22), transparent 70%), radial-gradient(900px 600px at 100% 100%, rgba(34, 228, 255, 0.18), transparent 70%), #0b0716; }
 .capture.shot .shot-title { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; padding: 0 4px 10px; }
 .shot-title b { font: 800 34px var(--font-body); letter-spacing: -0.03em; white-space: nowrap; }
 .shot-title span { font: 700 13px var(--font-display); color: var(--muted); white-space: nowrap; }
-.capture.shot :deep(.tier) { background: rgba(255, 255, 255, 0.05); }
+
 
 @media (max-width: 900px) {
   .board { height: auto; grid-template-columns: 1fr; gap: 14px; --card-w: 58px !important; --cols: 4 !important; }
@@ -393,12 +413,11 @@ kbd {
   .pool-scroll { max-height: 70vh; }
   .cols { display: none; }
   .toolbar { flex-wrap: wrap; }
-  .pill { order: 3; }
-}
+  }
 @media (max-width: 560px) {
   .board { --card-w: 50px !important; --cols: 3 !important; }
   .tools { width: 100%; }
-  .deck-btn { flex: 1; }
-  .name { font-size: 24px; }
+  .cta { flex: 1; justify-content: center; }
+  .name { font-size: 18px; }
 }
 </style>
