@@ -2,9 +2,10 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import Sortable from 'sortablejs'
 import Poster from './Poster.vue'
+import QuickRate from './QuickRate.vue'
 import { ALL_TIERS, GENRES, KINDS, TIERS, type TierKey } from '../data/meta'
 import { BY_ID, type Kind } from '../data/movies'
-import { move, placed, poolIds, state } from '../lib/store'
+import { move, placed, poolIds, state, undo, canUndo } from '../lib/store'
 
 const emit = defineEmits<{ open: [id: string] }>()
 
@@ -84,8 +85,13 @@ const KEYMAP: Record<string, TierKey | null> = {
   '1': 'S', '2': 'A', '3': 'B', '4': 'C', '5': 'D', '6': 'X', '0': null, backspace: null,
 }
 function onKey(e: KeyboardEvent) {
+  if (quick.value) return
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() in { z: 1, я: 1 } && !(e.target as HTMLElement)?.closest?.('input, textarea')) {
+    e.preventDefault()
+    return undo()
+  }
   if (!hovered.value || e.ctrlKey || e.metaKey || e.altKey) return
-  if ((e.target as HTMLElement).closest('input, textarea, select')) return
+  if ((e.target as HTMLElement)?.closest?.('input, textarea, select')) return
   const k = e.key.toLowerCase()
   if (!(k in KEYMAP)) return
   e.preventDefault()
@@ -96,23 +102,73 @@ function onKey(e: KeyboardEvent) {
 }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+
+// ── быстрая раскладка по одному ──
+const quick = ref<string[] | null>(null)
+const startQuick = () => { if (pool.value.length) quick.value = [...pool.value] }
+
+// ── тирлист картинкой ──
+const capture = ref<HTMLElement | null>(null)
+const shooting = ref(false)
+async function saveImage() {
+  if (!capture.value || shooting.value) return
+  shooting.value = true
+  try {
+    const el = capture.value
+    el.classList.add('shot')
+    const imgs = [...el.querySelectorAll('img')]
+    imgs.forEach((i) => (i.loading = 'eager'))
+    await Promise.race([Promise.all(imgs.map((i) => i.decode().catch(() => {}))), new Promise((r) => setTimeout(r, 4000))])
+    const { toPng } = await import('html-to-image')
+    const url = await toPng(el, {
+      pixelRatio: 2,
+      backgroundColor: '#1a120d',
+      filter: (n) => !(n instanceof HTMLElement && n.dataset.noshot !== undefined),
+    })
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `tierlist-${(state.name || 'my').replace(/[^\p{L}\p{N}_-]+/gu, '_')}.png`
+    a.click()
+  } catch (e) {
+    alert('Не получилось сохранить картинку: ' + (e as Error).message)
+  } finally {
+    capture.value?.classList.remove('shot')
+    shooting.value = false
+  }
+}
 </script>
 
 <template>
   <section class="board" @click="onClick" @mouseover="onOver" @mouseleave="hovered = null">
     <div class="tiers">
-      <div v-for="k in ALL_TIERS" :key="k" class="tier" :data-tier="k">
-        <div class="tier-label">
-          <b>{{ TIERS[k].label }}</b>
-          <span>{{ TIERS[k].note }}</span>
+      <div class="toolbar">
+        <input v-model="state.name" class="name" maxlength="40" placeholder="Чей это тирлист? Впиши имя" />
+        <button class="btn quick-btn" :disabled="!pool.length" @click="startQuick">
+          ⚡ Быстрая раскладка <small>{{ pool.length }}</small>
+        </button>
+        <button class="ghost" :disabled="!canUndo" title="Ctrl+Z" @click="undo">↶ Отменить</button>
+        <button class="ghost" :disabled="shooting || !total" @click="saveImage">{{ shooting ? 'Рисую…' : '🖼 Картинкой' }}</button>
+      </div>
+      <div ref="capture" class="capture">
+        <div class="shot-title">
+          <b>{{ state.name ? `Тирлист: ${state.name}` : 'Мой тирлист' }}</b>
+          <span>Ламповый тирлист · x1as.github.io/movie-tierlist</span>
         </div>
-        <div :ref="addList" class="tier-drop" :data-list="k">
-          <Poster v-for="id in state.tiers[k]" :key="id" :id="id" />
+        <div v-for="k in ALL_TIERS" :key="k" class="tier" :data-tier="k">
+          <div class="tier-label">
+            <b>{{ TIERS[k].label }}</b>
+            <span>{{ TIERS[k].note }}</span>
+            <i v-if="state.tiers[k].length">{{ state.tiers[k].length }}</i>
+          </div>
+          <div :ref="addList" class="tier-drop" :data-list="k">
+            <Poster v-for="id in state.tiers[k]" :key="id" :id="id" />
+            <span v-if="!state.tiers[k].length" class="drop-hint" data-noshot>перетащи сюда</span>
+          </div>
         </div>
       </div>
       <p class="hint">
         Перетаскивай постеры или жми на них. На компьютере быстрее: наведи и нажми <kbd>S</kbd> <kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd> <kbd>D</kbd>,
-        <kbd>X</kbd> — не смотрел, <kbd>0</kbd> — вернуть в коробку.
+        <kbd>X</kbd> — не смотрел, <kbd>0</kbd> — вернуть в коробку, <kbd>Ctrl</kbd>+<kbd>Z</kbd> — отменить. Много фильмов удобнее раскладывать через «⚡ Быстрая раскладка»: она берёт то, что сейчас отфильтровано в коробке.
       </p>
     </div>
 
@@ -141,6 +197,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
       <p v-if="!pool.length" class="empty">{{ poolIds.length ? 'Под фильтр ничего не подходит' : 'Коробка пуста — всё разложено 🎞' }}</p>
     </aside>
+    <Teleport to="body"><QuickRate v-if="quick" :ids="quick" @close="quick = null" /></Teleport>
   </section>
 </template>
 
@@ -151,7 +208,27 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   gap: 20px;
   align-items: start;
 }
-.tiers { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.tiers { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.name {
+  flex: 1 1 220px; min-width: 0;
+  background: transparent; color: var(--text);
+  border: 0; border-bottom: 2px dashed var(--line);
+  padding: 6px 2px; font: 700 22px var(--font-display);
+}
+.name:focus { outline: none; border-bottom-color: var(--accent); }
+.name::placeholder { color: var(--muted); opacity: 0.7; }
+.quick-btn small { background: rgba(36, 23, 15, 0.18); border-radius: 99px; padding: 1px 7px; font-size: 12px; }
+.toolbar .ghost:disabled { opacity: 0.45; cursor: default; }
+.capture { display: flex; flex-direction: column; gap: 8px; }
+.shot-title { display: none; }
+.capture.shot { padding: 22px; width: 1100px; background: #1a120d; }
+.capture.shot .shot-title { display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px 6px; }
+.shot-title b { font: 700 30px var(--font-display); white-space: nowrap; }
+.shot-title span { white-space: nowrap; }
+.shot-title span { font: 600 20px var(--font-hand); color: var(--accent); }
+.tier-label i { font: 800 11px var(--font-body); font-style: normal; opacity: 0.65; margin-top: 2px; }
+.drop-hint { align-self: center; margin: auto; color: var(--muted); font: 600 18px var(--font-hand); opacity: 0.45; pointer-events: none; }
 .tier {
   display: grid;
   grid-template-columns: 92px minmax(0, 1fr);
