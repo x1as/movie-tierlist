@@ -39,7 +39,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           </button>
         </div>
         <div class="row">
-          <button v-if="cur" class="ghost" @click="set(null)">Вернуть в коробку</button>
+          <button v-if="cur" class="ghost" @click="set(null)">Вернуть в каталог</button>
           <a class="ghost" :href="wikiUrl" target="_blank" rel="noopener">Википедия ↗</a>
         </div>
       </div>
@@ -51,7 +51,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .sheet {
   display: grid; grid-template-columns: 200px 1fr; gap: 22px;
   width: min(640px, 100%);
-  background: var(--surface); border: 2px solid var(--ink); border-radius: 14px;
+  background: var(--surface-solid); border: 0; border-radius: 26px;
   padding: 20px; box-shadow: var(--shadow-lg);
   animation: pop 0.2s ease;
 }
@@ -62,7 +62,7 @@ h3 { margin: 0 28px 4px 0; font: 700 24px/1.15 var(--font-display); }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tags span { font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); }
 .src { font: 600 13px var(--font-body); letter-spacing: 0.02em; color: var(--accent); margin: 12px 0; }
-.pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.pick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .pick button {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   padding: 8px 4px; border-radius: 10px; cursor: pointer;

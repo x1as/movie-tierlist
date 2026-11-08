@@ -27,9 +27,8 @@ defineProps<{ p: Profile; who: string; tone?: 'a' | 'b' }>()
   background:
     radial-gradient(140% 90% at 0% 0%, color-mix(in oklab, var(--c) 22%, transparent), transparent 60%),
     var(--panel);
-  border: 2px solid var(--ink);
-  box-shadow: var(--hard-lg);
-  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px var(--line), 0 0 60px -30px var(--c);
+  border-radius: 22px;
   padding: 22px;
   overflow: hidden;
 }
@@ -40,8 +39,8 @@ defineProps<{ p: Profile; who: string; tone?: 'a' | 'b' }>()
   width: 44px; height: 52px; display: grid; place-items: center;
   font: 700 30px var(--font-display);
   border-radius: 10px;
-  background: var(--c); border: 2px solid var(--ink);
-  color: var(--ink); box-shadow: 2px 2px 0 var(--ink);
+  background: var(--c); border: 0;
+  color: var(--on-tier); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 0 20px -4px var(--c);
 }
 h3 { margin: 0 0 6px; font: 700 26px/1.15 var(--font-display); }
 .txt { margin: 0 0 10px; color: var(--text-2); line-height: 1.5; }

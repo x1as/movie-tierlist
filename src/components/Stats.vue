@@ -6,6 +6,7 @@ import AxisBars from './AxisBars.vue'
 import { profile, type GroupStat } from '../lib/analysis'
 import { ALL_TIERS, TIERS } from '../data/meta'
 import { state } from '../lib/store'
+import { MOVIES } from '../data/movies'
 import { go } from '../lib/router'
 
 const emit = defineEmits<{ open: [id: string] }>()
@@ -44,7 +45,7 @@ const verdict = (avg: number) => (avg >= 4.5 ? 'святое' : avg >= 3.8 ? 'л
         <div v-if="bottom" class="tile"><span>Меньше всего заходит</span><b>{{ bottom.label }}</b><small>в среднем {{ fmtAvg(bottom.avg) }} · {{ bottom.n }} шт.</small></div>
         <div v-if="era" class="tile"><span>Золотая эпоха</span><b>{{ era.label }}</b><small>в среднем {{ fmtAvg(era.avg) }}</small></div>
         <div v-if="fmt" class="tile"><span>Любимый формат</span><b>{{ fmt.label }}</b><small>в среднем {{ fmtAvg(fmt.avg) }}</small></div>
-        <div class="tile"><span>Оценено</span><b>{{ p.ranked }}</b><small>ещё {{ p.dist.X }} не смотрел</small></div>
+        <div class="tile"><span>Оценено</span><b>{{ p.ranked }}</b><small>ещё {{ MOVIES.length - p.ranked }} в каталоге</small></div>
       </div>
 
       <div class="card">
@@ -108,7 +109,7 @@ h2 { margin: 0 0 14px; font: 700 22px/1.2 var(--font-display); }
 .empty { text-align: center; padding: 40px 20px; }
 .empty p { color: var(--text-2); }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
-.tile { background: var(--surface); border: 2px solid var(--ink); box-shadow: var(--hard); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.tile { background: var(--surface); border: 0; box-shadow: inset 0 0 0 1px var(--line); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
 .tile span { font: 600 13px var(--font-body); letter-spacing: 0.02em; color: var(--accent); }
 .tile b { font: 700 21px/1.15 var(--font-display); }
 .tile small { color: var(--muted); font-weight: 600; }

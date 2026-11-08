@@ -82,7 +82,7 @@ async function onFile(e: Event) {
 .modal {
   position: relative;
   width: min(520px, 100%);
-  background: var(--surface); border: 2px solid var(--ink); border-radius: 14px;
+  background: var(--surface-solid); border: 0; border-radius: 26px;
   padding: 22px; box-shadow: var(--shadow-lg);
   display: flex; flex-direction: column; gap: 12px;
   animation: pop 0.2s ease;

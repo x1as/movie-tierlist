@@ -11,15 +11,16 @@
     "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {
-    "@fontsource/dela-gothic-one": "^5.2.6",
-    "@fontsource/golos-text": "^5.2.6",
-    "@fontsource/jetbrains-mono": "^5.2.6",
+    "@fontsource/onest": "^5.2.6",
+    "@fontsource/unbounded": "^5.2.6",
     "html-to-image": "^1.11.11",
     "sortablejs": "1.15.6",
+    "three": "^0.170.0",
     "vue": "3.5.13"
   },
   "devDependencies": {
     "@types/sortablejs": "1.15.8",
+    "@types/three": "^0.170.0",
     "@vitejs/plugin-vue": "5.2.4",
     "sharp": "^0.34.2",
     "typescript": "5.8.3",

@@ -2,7 +2,8 @@ import type { Kind } from './movies'
 
 export type TierKey = 'S' | 'A' | 'B' | 'C' | 'D' | 'X'
 export const RANKED: TierKey[] = ['S', 'A', 'B', 'C', 'D']
-export const ALL_TIERS: TierKey[] = [...RANKED, 'X']
+// «Не смотрел» — это всё, что осталось в каталоге, отдельного тира нет
+export const ALL_TIERS: TierKey[] = [...RANKED]
 
 export const TIERS: Record<TierKey, { label: string; note: string; score: number }> = {
   S: { label: 'S', note: 'шедевр', score: 5 },

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import Board from './components/Board.vue'
 import Stats from './components/Stats.vue'
 import Mirror from './components/Mirror.vue'
 import MovieSheet from './components/MovieSheet.vue'
 import ShareModal from './components/ShareModal.vue'
+import ScrollArea from './components/ScrollArea.vue'
 import { route, go, SECRET } from './lib/router'
 import { placed, clearAll, resetToXias } from './lib/store'
 import { XIAS } from './data/xias'
@@ -19,7 +20,7 @@ const progress = computed(() => Math.round((count.value / MOVIES.length) * 100))
 
 function doClear() {
   menu.value = false
-  if (count.value && !confirm('Убрать все фильмы обратно в коробку и начать свой тирлист с нуля? (Отменить можно через Ctrl+Z)')) return
+  if (count.value && !confirm('Вернуть все фильмы в каталог и начать свой тирлист с нуля? (Отменить можно через Ctrl+Z)')) return
   clearAll()
 }
 function doXias() {
@@ -27,25 +28,36 @@ function doXias() {
   if (!confirm('Вернуть тирлист Xias? Текущая раскладка заменится (отменить можно через Ctrl+Z).')) return
   resetToXias()
 }
+
+// 3D-фон грузится отдельно, после первого рендера интерфейса
+const canvas = ref<HTMLCanvasElement | null>(null)
+let stop: (() => void) | null = null
+onMounted(async () => {
+  try {
+    const { startScene } = await import('./lib/scene')
+    if (canvas.value) stop = startScene(canvas.value)
+  } catch {}
+})
+onBeforeUnmount(() => stop?.())
 </script>
 
 <template>
+  <canvas ref="canvas" class="bg3d" aria-hidden="true" />
+  <div class="bg-veil" aria-hidden="true" />
   <div class="shell" :class="'page-' + page">
     <header class="top">
       <a class="logo" href="#/" @click.prevent="go('')">
-        <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
-          <g fill="none" stroke-width="3.2">
-            <circle cx="21.5" cy="21.5" r="14" stroke="#0078bf" opacity=".75" />
-            <circle cx="21.5" cy="21.5" r="6.5" stroke="#0078bf" opacity=".75" />
-            <circle cx="19" cy="19" r="14" stroke="#ff48b0" />
-            <circle cx="19" cy="19" r="6.5" stroke="#ff48b0" />
-          </g>
-          <path d="M19 1v12M19 25v12M1 19h12M25 19h12" stroke="#18161d" stroke-width="2.6" />
-          <circle cx="19" cy="19" r="2.4" fill="#18161d" />
-        </svg>
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40">
+            <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff2bd6" /><stop offset=".5" stop-color="#8b5cff" /><stop offset="1" stop-color="#22e4ff" /></linearGradient></defs>
+            <path d="M20 3 35 11.5v17L20 37 5 28.5v-17z" fill="none" stroke="url(#lg)" stroke-width="2.6" stroke-linejoin="round" />
+            <path d="M20 3v34M5 11.5l30 17M35 11.5l-30 17" stroke="url(#lg)" stroke-width="1.2" opacity=".55" />
+            <circle cx="20" cy="20" r="4.2" fill="url(#lg)" />
+          </svg>
+        </span>
         <b>КИНОТИР</b>
       </a>
-      <nav>
+      <nav class="seg">
         <a href="#/" :class="{ on: page === 'board' }">Тирлист</a>
         <a href="#/stats" :class="{ on: page === 'stats' }">Итоги</a>
       </nav>
@@ -57,7 +69,9 @@ function doXias() {
         <button class="btn" @click="share = 'export'">Выгрузить</button>
         <button class="ghost" @click="share = 'import'">Загрузить</button>
         <div class="more">
-          <button class="ghost" aria-label="Сброс" @click="menu = !menu">Сброс</button>
+          <button class="ghost round" aria-label="Ещё" title="Сброс" @click="menu = !menu">
+            <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
+          </button>
           <div v-if="menu" class="drop" @mouseleave="menu = false">
             <button @click="doClear">Начать свой с нуля</button>
             <button :disabled="!XIAS" @click="doXias">Вернуть тирлист Xias<small v-if="!XIAS"> · скоро</small></button>
@@ -66,9 +80,11 @@ function doXias() {
       </div>
     </header>
 
-    <main :class="{ scroll: page !== 'board' }">
+    <main>
       <Board v-if="page === 'board'" @open="sheet = $event" />
-      <div v-else class="page"><Stats v-if="page === 'stats'" @open="sheet = $event" /><Mirror v-else @open="sheet = $event" /></div>
+      <ScrollArea v-else class="page-scroll">
+        <div class="page"><Stats v-if="page === 'stats'" @open="sheet = $event" /><Mirror v-else @open="sheet = $event" /></div>
+      </ScrollArea>
     </main>
   </div>
 
@@ -80,65 +96,59 @@ function doXias() {
 .shell { height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); }
 .top {
   display: flex; align-items: center; gap: 14px;
-  padding: 10px 14px 12px;
+  margin: 10px 14px 12px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 22px;
+  background: rgba(14, 10, 26, 0.72);
+  backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow: inset 0 0 0 1px var(--line), 0 16px 40px -24px rgba(0, 0, 0, 0.9);
   min-width: 0;
 }
-.logo { display: flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; flex: none; }
-.mark { width: 34px; height: 34px; transition: rotate 0.4s cubic-bezier(.2,.8,.2,1); }
-.logo:hover .mark { rotate: 90deg; }
-.logo b { font: 400 24px/1 var(--font-display); letter-spacing: 0.01em; text-shadow: var(--misreg); }
-nav { display: flex; gap: 4px; }
-nav a {
-  color: var(--ink); text-decoration: none;
-  font: 600 13.5px var(--font-body);
-  padding: 6px 12px; border-radius: 8px; border: 2px solid transparent;
-  transition: background 0.1s, border-color 0.1s;
-}
-nav a:hover { border-color: var(--ink); }
-nav a.on { background: var(--ink); color: var(--surface); border-color: var(--ink); box-shadow: 2px 2px 0 var(--pink); }
-.meter { display: flex; align-items: center; gap: 10px; font: 500 12px var(--font-mono); color: var(--muted); min-width: 0; }
-.meter .bar {
-  width: 150px; height: 12px; border-radius: 99px;
-  border: 2px solid var(--ink); background: var(--surface);
-  overflow: hidden;
-}
-.meter .bar i {
-  display: block; height: 100%;
-  background: repeating-linear-gradient(-45deg, var(--pink) 0 6px, color-mix(in oklab, var(--pink), white 35%) 6px 12px);
-  border-right: 2px solid var(--ink);
-  transition: width 0.3s ease;
-}
-.meter b { color: var(--ink); font-weight: 700; }
+.logo { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; flex: none; }
+.mark { width: 34px; height: 34px; display: grid; place-items: center; filter: drop-shadow(0 0 8px rgba(255, 43, 214, 0.6)); transition: rotate 0.6s cubic-bezier(.2,.8,.2,1); }
+.mark svg { width: 34px; height: 34px; }
+.logo:hover .mark { rotate: 60deg; }
+.logo b { font: 800 19px/1 var(--font-display); letter-spacing: 0.02em; }
+.seg { display: flex; padding: 4px; border-radius: 16px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.seg a { color: var(--text-2); text-decoration: none; font: 600 14px var(--font-body); padding: 7px 16px; border-radius: 12px; transition: color 0.15s, background 0.2s; }
+.seg a:hover { color: var(--text); }
+.seg a.on { background: var(--text); color: var(--on-tier); }
+.meter { display: flex; align-items: center; gap: 10px; font: 600 13px var(--font-body); color: var(--muted); min-width: 0; font-variant-numeric: tabular-nums; }
+.meter .bar { width: 160px; height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); }
+.meter .bar i { display: block; height: 100%; border-radius: 99px; background: var(--grad); box-shadow: 0 0 14px var(--accent); transition: width 0.4s cubic-bezier(.2,.8,.2,1); }
+.meter b { color: var(--text); }
 .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.round { width: 40px; padding: 0; }
+.round svg { width: 18px; height: 18px; fill: currentColor; }
 .more { position: relative; }
 .drop {
-  position: absolute; right: 0; top: calc(100% + 8px); z-index: 30;
-  background: var(--surface); border: 2px solid var(--ink); border-radius: 10px;
-  padding: 5px; min-width: 230px; box-shadow: 5px 5px 0 var(--ink);
+  position: absolute; right: 0; top: calc(100% + 10px); z-index: 30;
+  background: var(--surface-solid); border-radius: 18px;
+  padding: 6px; min-width: 240px; box-shadow: var(--shadow-lg);
   display: flex; flex-direction: column;
+  animation: pop 0.15s ease;
 }
-.drop button { text-align: left; background: none; border: 0; color: var(--ink); padding: 9px 10px; border-radius: 6px; font: 600 14px var(--font-body); cursor: pointer; }
-.drop button:hover:not(:disabled) { background: var(--yellow); }
+.drop button { text-align: left; background: none; border: 0; color: var(--text); padding: 11px 12px; border-radius: 12px; font: 600 14px var(--font-body); cursor: pointer; }
+.drop button:hover:not(:disabled) { background: var(--surface-3); }
 .drop button:disabled { color: var(--muted); cursor: not-allowed; }
 main { min-height: 0; padding: 0 14px 14px; }
 .page-board main { overflow: hidden; }
-main.scroll { overflow-y: auto; }
-.page { max-width: 1280px; margin: 0 auto; padding: 4px 8px 8px 0; }
+.page-scroll { height: 100%; }
+.page { max-width: 1280px; margin: 0 auto; padding: 0 8px 8px 0; }
 
 @media (max-width: 900px) {
   .shell { height: auto; min-height: 100dvh; display: block; }
   .page-board main { overflow: visible; }
-  main.scroll { overflow: visible; }
+  .page-scroll :deep(.sa-vp) { overflow: visible; -webkit-mask-image: none; mask-image: none; }
   .meter .bar { width: 80px; }
 }
 @media (max-width: 700px) {
-  .top { flex-wrap: wrap; gap: 10px; padding: 10px; }
-  nav { margin-left: auto; }
+  .top { flex-wrap: wrap; gap: 10px; margin: 8px; padding: 10px; }
+  .seg { margin-left: auto; }
   .meter { order: 4; width: 100%; }
   .meter .bar { flex: 1; width: auto; }
   .actions { order: 3; margin-left: 0; width: 100%; }
-  .actions > * { flex: 1; }
-  .actions .btn, .actions .ghost { justify-content: center; width: 100%; padding: 0 8px; font-size: 13px; }
-  main { padding: 0 10px 16px; }
+  .actions > .btn, .actions > .ghost { flex: 1; }
+  main { padding: 0 8px 16px; }
 }
 </style>
