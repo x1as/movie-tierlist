@@ -64,8 +64,8 @@ function doXias() {
       </template>
       <template v-else>
         <b>{{ count ? `Разложено ${count} из ${MOVIES.length}.` : 'Собери свой тирлист.' }}</b>
-        В коробке {{ MOVIES.length }} фильмов, мультиков и сериалов: часть из любимого Xias, остальное подобрано под его вкус.
-        Не смотрел — кидай в «—», это не испортит итоги.
+        <span class="more-text">В коробке {{ MOVIES.length }} фильмов, мультиков и сериалов: часть из любимого Xias, остальное подобрано под его вкус.
+        Не смотрел — кидай в «—», это не испортит итоги.</span>
       </template>
     </div>
 
@@ -118,6 +118,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 18px 24px 40px; }
   color: var(--text-2); line-height: 1.5; font-size: 14px;
 }
 .banner b { color: var(--text); }
+@media (max-width: 560px) { .more-text { display: none; } }
 footer { text-align: center; color: var(--muted); font: 600 18px var(--font-hand); padding: 10px 16px 30px; }
 @media (max-width: 760px) {
   .top { flex-wrap: wrap; gap: 8px 12px; padding: 10px 16px; position: static; }

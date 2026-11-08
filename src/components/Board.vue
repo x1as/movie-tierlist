@@ -313,6 +313,9 @@ kbd {
   .pool-grid { max-height: 62vh; }
 }
 @media (max-width: 560px) {
+  .toolbar { display: grid; grid-template-columns: 1fr 1fr; }
+  .toolbar .name, .toolbar .quick-btn { grid-column: 1 / -1; }
+  .toolbar button { justify-content: center; }
   .tier { grid-template-columns: 58px minmax(0, 1fr); }
   .tier-label b { font-size: 26px; }
   .tier-label span { font-size: 13px; }
