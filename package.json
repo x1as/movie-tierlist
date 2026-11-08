@@ -1,0 +1,24 @@
+{
+  "name": "movie-tierlist",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "posters": "node scripts/fetch-posters.mjs",
+    "deploy": "bash scripts/deploy.sh"
+  },
+  "dependencies": {
+    "sortablejs": "1.15.6",
+    "vue": "3.5.13"
+  },
+  "devDependencies": {
+    "@types/sortablejs": "1.15.8",
+    "@vitejs/plugin-vue": "5.2.4",
+    "sharp": "^0.34.2",
+    "typescript": "5.8.3",
+    "vite": "6.3.5"
+  }
+}
