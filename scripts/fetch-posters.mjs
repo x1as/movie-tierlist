@@ -5,7 +5,7 @@ import { mkdir, writeFile, readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { MOVIES } from '../src/data/movies.ts'
 
-const UA = 'LampTierlist/1.0 (https://github.com/x1as/movie-tierlist)'
+const UA = 'KinotirBot/1.0 (https://github.com/x1as/movie-tierlist)'
 const OUT = new URL('../public/posters/', import.meta.url)
 const MAP = new URL('../src/data/posters.json', import.meta.url)
 const force = process.argv.includes('--force')

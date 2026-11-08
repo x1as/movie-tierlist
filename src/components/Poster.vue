@@ -28,15 +28,18 @@ const hue = computed(() => [...props.id].reduce((a, c) => a + c.charCodeAt(0), 0
   position: relative;
   width: var(--card-w);
   aspect-ratio: 2 / 3;
-  border-radius: 7px;
+  border-radius: 6px;
   overflow: hidden;
-  background: var(--panel-2);
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 6px 14px -6px rgba(0, 0, 0, 0.6);
+  background: var(--surface-2);
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+  box-shadow: 2px 2px 0 var(--ink);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
   flex: none;
   user-select: none;
   contain: layout paint style;
 }
-.poster.big { width: 100%; border-radius: 12px; }
+.poster.big { width: 100%; border-radius: 12px; box-shadow: 6px 6px 0 var(--ink); }
 img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
 .fallback {
   width: 100%; height: 100%;

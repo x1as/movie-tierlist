@@ -3,7 +3,7 @@
 import { readFile, writeFile, unlink } from 'node:fs/promises'
 import { MOVIES, BY_ID } from '../src/data/movies.ts'
 
-const UA = 'LampTierlist/1.0 (https://github.com/x1as/movie-tierlist)'
+const UA = 'KinotirBot/1.0 (https://github.com/x1as/movie-tierlist)'
 const OUT = new URL('../public/posters/', import.meta.url)
 const MAP = new URL('../src/data/posters.json', import.meta.url)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))

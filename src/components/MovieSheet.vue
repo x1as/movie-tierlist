@@ -51,7 +51,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .sheet {
   display: grid; grid-template-columns: 200px 1fr; gap: 22px;
   width: min(640px, 100%);
-  background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+  background: var(--surface); border: 2px solid var(--ink); border-radius: 14px;
   padding: 20px; box-shadow: var(--shadow-lg);
   animation: pop 0.2s ease;
 }

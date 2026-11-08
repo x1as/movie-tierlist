@@ -27,8 +27,9 @@ defineProps<{ p: Profile; who: string; tone?: 'a' | 'b' }>()
   background:
     radial-gradient(140% 90% at 0% 0%, color-mix(in oklab, var(--c) 22%, transparent), transparent 60%),
     var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 20px;
+  border: 2px solid var(--ink);
+  box-shadow: var(--hard-lg);
+  border-radius: 12px;
   padding: 22px;
   overflow: hidden;
 }
@@ -39,8 +40,8 @@ defineProps<{ p: Profile; who: string; tone?: 'a' | 'b' }>()
   width: 44px; height: 52px; display: grid; place-items: center;
   font: 700 30px var(--font-display);
   border-radius: 10px;
-  background: var(--bg-2); border: 1px solid var(--line);
-  color: var(--c);
+  background: var(--c); border: 2px solid var(--ink);
+  color: var(--ink); box-shadow: 2px 2px 0 var(--ink);
 }
 h3 { margin: 0 0 6px; font: 700 26px/1.15 var(--font-display); }
 .txt { margin: 0 0 10px; color: var(--text-2); line-height: 1.5; }

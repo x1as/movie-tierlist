@@ -33,8 +33,17 @@ function doXias() {
   <div class="shell" :class="'page-' + page">
     <header class="top">
       <a class="logo" href="#/" @click.prevent="go('')">
-        <span class="mark" aria-hidden="true"><i /></span>
-        <b>Ламповый тирлист</b>
+        <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+          <g fill="none" stroke-width="3.2">
+            <circle cx="21.5" cy="21.5" r="14" stroke="#0078bf" opacity=".75" />
+            <circle cx="21.5" cy="21.5" r="6.5" stroke="#0078bf" opacity=".75" />
+            <circle cx="19" cy="19" r="14" stroke="#ff48b0" />
+            <circle cx="19" cy="19" r="6.5" stroke="#ff48b0" />
+          </g>
+          <path d="M19 1v12M19 25v12M1 19h12M25 19h12" stroke="#18161d" stroke-width="2.6" />
+          <circle cx="19" cy="19" r="2.4" fill="#18161d" />
+        </svg>
+        <b>КИНОТИР</b>
       </a>
       <nav>
         <a href="#/" :class="{ on: page === 'board' }">Тирлист</a>
@@ -70,58 +79,66 @@ function doXias() {
 <style scoped>
 .shell { height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); }
 .top {
-  display: flex; align-items: center; gap: 16px;
-  padding: 8px 12px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 14px 12px;
   min-width: 0;
 }
-.logo { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; flex: none; }
-.logo b { font: 600 19px/1 var(--font-display); letter-spacing: -0.01em; white-space: nowrap; }
-.mark {
-  width: 30px; height: 30px; border-radius: 9px;
-  background: var(--accent);
-  display: grid; place-items: center;
-  box-shadow: 0 0 22px -2px var(--accent-glow);
+.logo { display: flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; flex: none; }
+.mark { width: 34px; height: 34px; transition: rotate 0.4s cubic-bezier(.2,.8,.2,1); }
+.logo:hover .mark { rotate: 90deg; }
+.logo b { font: 400 24px/1 var(--font-display); letter-spacing: 0.01em; text-shadow: var(--misreg); }
+nav { display: flex; gap: 4px; }
+nav a {
+  color: var(--ink); text-decoration: none;
+  font: 600 13.5px var(--font-body);
+  padding: 6px 12px; border-radius: 8px; border: 2px solid transparent;
+  transition: background 0.1s, border-color 0.1s;
 }
-.mark i { width: 12px; height: 12px; border-radius: 50%; background: var(--on-accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--on-accent) 25%, transparent); }
-nav { display: flex; gap: 2px; padding: 3px; background: var(--surface); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); }
-nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 14px; padding: 6px 12px; border-radius: 9px; transition: color 0.15s, background 0.15s; }
-nav a.on { color: var(--text); background: var(--surface-3); }
-nav a:hover { color: var(--text); }
-.meter { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; min-width: 0; }
-.meter .bar { width: 120px; height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
-.meter .bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s ease; }
-.meter b { color: var(--text); }
-.actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+nav a:hover { border-color: var(--ink); }
+nav a.on { background: var(--ink); color: var(--surface); border-color: var(--ink); box-shadow: 2px 2px 0 var(--pink); }
+.meter { display: flex; align-items: center; gap: 10px; font: 500 12px var(--font-mono); color: var(--muted); min-width: 0; }
+.meter .bar {
+  width: 150px; height: 12px; border-radius: 99px;
+  border: 2px solid var(--ink); background: var(--surface);
+  overflow: hidden;
+}
+.meter .bar i {
+  display: block; height: 100%;
+  background: repeating-linear-gradient(-45deg, var(--pink) 0 6px, color-mix(in oklab, var(--pink), white 35%) 6px 12px);
+  border-right: 2px solid var(--ink);
+  transition: width 0.3s ease;
+}
+.meter b { color: var(--ink); font-weight: 700; }
+.actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .more { position: relative; }
 .drop {
-  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
-  background: var(--surface-2); border-radius: 12px;
-  padding: 6px; min-width: 230px; box-shadow: var(--shadow-lg), inset 0 0 0 1px var(--line);
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 30;
+  background: var(--surface); border: 2px solid var(--ink); border-radius: 10px;
+  padding: 5px; min-width: 230px; box-shadow: 5px 5px 0 var(--ink);
   display: flex; flex-direction: column;
 }
-.drop button { text-align: left; background: none; border: 0; color: var(--text); padding: 9px 10px; border-radius: 8px; font: 600 14px var(--font-body); cursor: pointer; }
-.drop button:hover:not(:disabled) { background: var(--surface-3); }
+.drop button { text-align: left; background: none; border: 0; color: var(--ink); padding: 9px 10px; border-radius: 6px; font: 600 14px var(--font-body); cursor: pointer; }
+.drop button:hover:not(:disabled) { background: var(--yellow); }
 .drop button:disabled { color: var(--muted); cursor: not-allowed; }
-main { min-height: 0; padding: 0 12px 12px; }
+main { min-height: 0; padding: 0 14px 14px; }
 .page-board main { overflow: hidden; }
 main.scroll { overflow-y: auto; }
-.page { max-width: 1280px; margin: 0 auto; padding-top: 4px; }
+.page { max-width: 1280px; margin: 0 auto; padding: 4px 8px 8px 0; }
 
 @media (max-width: 900px) {
   .shell { height: auto; min-height: 100dvh; display: block; }
   .page-board main { overflow: visible; }
   main.scroll { overflow: visible; }
-  .meter .bar { width: 70px; }
+  .meter .bar { width: 80px; }
 }
 @media (max-width: 700px) {
-  .top { flex-wrap: wrap; gap: 8px 10px; padding: 10px; }
-  .logo b { font-size: 17px; }
+  .top { flex-wrap: wrap; gap: 10px; padding: 10px; }
   nav { margin-left: auto; }
   .meter { order: 4; width: 100%; }
   .meter .bar { flex: 1; width: auto; }
   .actions { order: 3; margin-left: 0; width: 100%; }
   .actions > * { flex: 1; }
-  .actions .btn, .actions .ghost { justify-content: center; width: 100%; padding: 9px 8px; white-space: nowrap; font-size: 13px; }
+  .actions .btn, .actions .ghost { justify-content: center; width: 100%; padding: 0 8px; font-size: 13px; }
   main { padding: 0 10px 16px; }
 }
 </style>

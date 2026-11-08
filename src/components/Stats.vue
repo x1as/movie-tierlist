@@ -108,7 +108,7 @@ h2 { margin: 0 0 14px; font: 700 22px/1.2 var(--font-display); }
 .empty { text-align: center; padding: 40px 20px; }
 .empty p { color: var(--text-2); }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
-.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.tile { background: var(--surface); border: 2px solid var(--ink); box-shadow: var(--hard); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
 .tile span { font: 600 13px var(--font-body); letter-spacing: 0.02em; color: var(--accent); }
 .tile b { font: 700 21px/1.15 var(--font-display); }
 .tile small { color: var(--muted); font-weight: 600; }
