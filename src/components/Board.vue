@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import Sortable from 'sortablejs'
-import Poster from './Poster.vue'
+import TierRow from './TierRow.vue'
+import PoolGrid from './PoolGrid.vue'
 import QuickRate from './QuickRate.vue'
 import ScrollArea from './ScrollArea.vue'
-import { ALL_TIERS, GENRES, KINDS, TIERS, type TierKey } from '../data/meta'
+import { ALL_TIERS, GENRES, KINDS, type TierKey } from '../data/meta'
 import { BY_ID, MOVIES, type Kind } from '../data/movies'
 import { move, placed, poolIds, state, undo, canUndo } from '../lib/store'
+import { justDropped } from '../lib/dnd'
 
 const emit = defineEmits<{ open: [id: string] }>()
 
@@ -18,33 +19,47 @@ const cols = ref(pref('cols', 4))
 watch(poolW, (v) => save('poolW', v))
 watch(cols, (v) => save('cols', v))
 
-// ── тиры всегда влезают в экран: подбираем общий размер постера под свободное место ──
+// ── тиры всегда влезают в экран ──
+// Ищем самый крупный общий размер постера, при котором все ряды помещаются по высоте.
+// В каждом ряду держим запас на одну карточку: входящая карточка никогда не вылезет за край,
+// а пустой ряд всегда не ниже одного постера.
 const tiersBox = ref<HTMLElement | null>(null)
 const box = reactive({ w: 0, h: 0 })
+const wide = ref(true)
 let boxRO: ResizeObserver | null = null
-const GAP = 6, ROW_GAP = 10, ROW_PAD = 16, LABEL = 78, LABEL_GAP = 10, MIN_ROW = 74, MAX_W = 118, MIN_W = 22
-const rowsFor = (n: number, w: number, inner: number) => {
-  if (!n) return 0
-  const perRow = Math.max(1, Math.floor((inner + GAP) / (w + GAP)))
-  return Math.ceil(n / perRow)
-}
+const GAP = 6, ROW_GAP = 10, ROW_PAD = 16, LABEL = 78, LABEL_GAP = 10, MAX_W = 118, MIN_W = 22
+const rowsFor = (n: number, w: number, inner: number) => Math.ceil(n / Math.max(1, Math.floor((inner + GAP) / (w + GAP))))
 const fit = computed(() => {
   const inner = box.w - LABEL - LABEL_GAP - ROW_PAD
   const avail = box.h - ROW_GAP * (ALL_TIERS.length - 1)
-  const counts = ALL_TIERS.map((k) => state.tiers[k].length)
-  const need = (w: number) => counts.map((n) => Math.max(MIN_ROW, rowsFor(n, w, inner) * w * 1.5 + Math.max(0, rowsFor(n, w, inner) - 1) * GAP + ROW_PAD))
+  const counts = ALL_TIERS.map((k) => state.tiers[k].length + 1) // +1 — место под входящую карточку
+  const need = (w: number) => counts.map((n) => { const r = rowsFor(n, w, inner); return r * w * 1.5 + (r - 1) * GAP + ROW_PAD })
   let w = MAX_W
-  if (inner > 0 && avail > 0) {
-    for (; w > MIN_W; w -= 1) if (need(w).reduce((a, b) => a + b, 0) <= avail) break
-  }
-  const heights = need(w)
-  return { w, heights: Object.fromEntries(ALL_TIERS.map((k, i) => [k, heights[i]])) as Record<string, number> }
+  if (inner > 0 && avail > 0) for (; w > MIN_W; w--) if (need(w).reduce((a, b) => a + b, 0) <= avail) break
+  return { w, heights: need(w) }
 })
+// стили пишем прямо в DOM: без перерисовки компонентов и без пересчёта стилей каталога
+watch([fit, wide, tiersBox], () => {
+  const el = tiersBox.value
+  if (!el) return
+  if (!wide.value || box.w < 200 || box.h < 200) { el.removeAttribute('style'); return }
+  el.style.setProperty('--card-w', fit.value.w + 'px')
+  ALL_TIERS.forEach((k, i) => el.style.setProperty('--basis-' + k, fit.value.heights[i] + 'px'))
+}, { flush: 'sync' })
+const mq = matchMedia('(min-width: 901px)')
+const onMq = () => (wide.value = mq.matches)
+// замер синхронно (и на resize окна) — не зависим только от ResizeObserver
+const measureBox = () => { wide.value = mq.matches; const el = tiersBox.value; if (el) { box.w = el.clientWidth; box.h = el.clientHeight } }
 onMounted(() => {
+  onMq()
+  mq.addEventListener('change', onMq)
+  measureBox()
+  requestAnimationFrame(measureBox)
+  window.addEventListener('resize', measureBox)
   boxRO = new ResizeObserver(([e]) => { box.w = e.contentRect.width; box.h = e.contentRect.height })
   if (tiersBox.value) boxRO.observe(tiersBox.value)
 })
-onBeforeUnmount(() => boxRO?.disconnect())
+onBeforeUnmount(() => { boxRO?.disconnect(); mq.removeEventListener('change', onMq); window.removeEventListener('resize', measureBox) })
 
 // ── фильтры каталога ──
 const q = ref('')
@@ -65,59 +80,8 @@ const pool = computed(() => {
 })
 const total = computed(() => placed.value.size)
 
-// ── drag & drop (fallback-режим Sortable: без системной анимации возврата) ──
-const lists: HTMLElement[] = []
-const addList = (el: unknown) => { if (el && !lists.includes(el as HTMLElement)) lists.push(el as HTMLElement) }
-const sortables: Sortable[] = []
-const dragging = ref(false)
-let next: Node | null = null
-let lastDrag = 0
-
-onMounted(() => {
-  for (const el of lists) {
-    const isPool = el.dataset.list === 'pool'
-    sortables.push(
-      Sortable.create(el, {
-        group: 'tiers',
-        sort: !isPool,
-        animation: 140,
-        easing: 'cubic-bezier(.2,.8,.2,1)',
-        draggable: '.poster',
-        forceFallback: true,
-        fallbackOnBody: true,
-        fallbackTolerance: 4,
-        delay: 140,
-        delayOnTouchOnly: true,
-        scroll: true,
-        bubbleScroll: true,
-        scrollSensitivity: 90,
-        scrollSpeed: 14,
-        ghostClass: 'drag-ghost',
-        chosenClass: 'drag-chosen',
-        fallbackClass: 'drag-float',
-        onStart: (e) => { next = e.item.nextSibling; dragging.value = true; document.body.classList.add('is-dragging') },
-        onEnd: (e) => {
-          dragging.value = false
-          document.body.classList.remove('is-dragging')
-          lastDrag = Date.now()
-          const id = e.item.dataset.id!
-          const to = (e.to as HTMLElement).dataset.list!
-          const from = (e.from as HTMLElement).dataset.list!
-          const idx = e.newDraggableIndex ?? e.newIndex ?? 0
-          if (to === from && e.oldDraggableIndex === idx) return
-          e.item.remove()
-          e.from.insertBefore(e.item, next)
-          if (to === 'pool') { if (from !== 'pool') move(id, null) }
-          else move(id, to as TierKey, idx)
-        },
-      }),
-    )
-  }
-})
-onBeforeUnmount(() => sortables.forEach((s) => s.destroy()))
-
 function onClick(ev: MouseEvent) {
-  if (Date.now() - lastDrag < 250) return
+  if (justDropped()) return
   const el = (ev.target as HTMLElement).closest('.poster') as HTMLElement | null
   if (el?.dataset.id) emit('open', el.dataset.id)
 }
@@ -147,10 +111,10 @@ function nudge(e: KeyboardEvent) {
 }
 
 // ── горячие клавиши: наведи и нажми S/A/B/C/D или 1–5; X / 0 — обратно в каталог ──
-const hovered = ref<string | null>(null)
+let hovered: string | null = null
 function onOver(ev: MouseEvent) {
   const el = (ev.target as HTMLElement).closest('.poster') as HTMLElement | null
-  hovered.value = el?.dataset.id ?? null
+  hovered = el?.dataset.id ?? null
 }
 const KEYMAP: Record<string, TierKey | null> = {
   s: 'S', a: 'A', b: 'B', c: 'C', d: 'D',
@@ -164,14 +128,13 @@ function onKey(e: KeyboardEvent) {
     e.preventDefault()
     return undo()
   }
-  if (!hovered.value || e.ctrlKey || e.metaKey || e.altKey || inField) return
+  if (!hovered || e.ctrlKey || e.metaKey || e.altKey || inField) return
   const k = e.key.toLowerCase()
   if (!(k in KEYMAP)) return
   e.preventDefault()
-  const id = hovered.value
   const t = KEYMAP[k]
-  if ((placed.value.get(id) ?? null) === t) return
-  move(id, t)
+  if ((placed.value.get(hovered) ?? null) === t) return
+  move(hovered, t)
 }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
@@ -190,7 +153,6 @@ async function saveImage() {
     const el = capture.value
     el.classList.add('shot')
     const imgs = [...el.querySelectorAll('img')]
-    imgs.forEach((i) => (i.loading = 'eager'))
     await Promise.race([Promise.all(imgs.map((i) => i.decode().catch(() => {}))), new Promise((r) => setTimeout(r, 4000))])
     const { toPng } = await import('html-to-image')
     const url = await toPng(el, {
@@ -211,12 +173,13 @@ async function saveImage() {
 }
 </script>
 
+
 <template>
   <section
     ref="boardEl"
     class="board"
-    :class="{ dragging, resizing }"
-    :style="{ '--pool-w': poolW + 'px', '--card-w': fit.w + 'px', '--cols': cols }"
+    :class="{ resizing }"
+    :style="{ '--pool-w': poolW + 'px', '--cols': cols }"
     @click="onClick"
     @mouseover="onOver"
     @mouseleave="hovered = null"
@@ -247,12 +210,7 @@ async function saveImage() {
             <b>{{ state.name ? `Тирлист: ${state.name}` : 'Мой тирлист' }}</b>
             <span>КИНОТИР · x1as.github.io/movie-tierlist</span>
           </div>
-          <div v-for="k in ALL_TIERS" :key="k" class="tier" :data-tier="k" :style="{ flexBasis: fit.heights[k] + 'px' }">
-            <div class="tier-label" :title="TIERS[k].note"><b>{{ TIERS[k].label }}</b></div>
-            <div :ref="addList" class="tier-drop" :data-list="k">
-              <Poster v-for="id in state.tiers[k]" :key="id" :id="id" />
-            </div>
-          </div>
+          <TierRow v-for="k in ALL_TIERS" :key="k" :k="k" :ids="state.tiers[k]" />
         </div>
       </div>
     </div>
@@ -299,9 +257,7 @@ async function saveImage() {
         </div>
       </div>
       <ScrollArea class="pool-scroll">
-        <div :ref="addList" class="pool-grid" data-list="pool">
-          <Poster v-for="id in pool" :key="id" :id="id" label />
-        </div>
+        <PoolGrid :ids="pool" />
         <p v-if="!pool.length" class="empty">{{ poolIds.length ? 'Под фильтр ничего не подходит' : 'Каталог пуст — всё разложено' }}</p>
       </ScrollArea>
     </aside>
@@ -352,62 +308,6 @@ async function saveImage() {
 /* ── тиры: неоновые объёмные плитки, всегда влезают без скролла ── */
 .tiers-box { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
 .capture { display: flex; flex-direction: column; gap: 10px; min-height: 100%; }
-.tier {
-  position: relative;
-  display: grid;
-  grid-template-columns: 78px minmax(0, 1fr);
-  gap: 10px;
-  padding: 8px;
-  border-radius: 22px;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--line), 0 18px 40px -26px rgba(0, 0, 0, 0.9);
-  flex: 1 0 auto;
-  min-height: 0;
-  transition: box-shadow 0.18s;
-}
-.tier::before {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background: linear-gradient(90deg, color-mix(in oklab, var(--tc) 16%, transparent), transparent 40%);
-}
-.tier-label {
-  position: relative;
-  display: grid; place-items: center;
-  border-radius: 16px;
-  background: var(--tg);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.65),
-    inset 0 -10px 18px rgba(0, 0, 0, 0.22),
-    0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 10px 30px -8px var(--tc),
-    0 0 40px -10px var(--tc);
-  overflow: hidden;
-}
-.tier-label::after {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(115deg, rgba(255, 255, 255, 0.45) 0 18%, transparent 18% 100%);
-  mix-blend-mode: soft-light;
-}
-.tier-label b {
-  position: relative;
-  font: 800 40px/1 var(--font-display);
-  color: var(--on-tier);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35), 0 3px 0 rgba(0, 0, 0, 0.18);
-}
-.tier[data-tier='S'] { --tc: var(--t-s); --tg: var(--g-s); }
-.tier[data-tier='A'] { --tc: var(--t-a); --tg: var(--g-a); }
-.tier[data-tier='B'] { --tc: var(--t-b); --tg: var(--g-b); }
-.tier[data-tier='C'] { --tc: var(--t-c); --tg: var(--g-c); }
-.tier[data-tier='D'] { --tc: var(--t-d); --tg: var(--g-d); }
-.tier-drop {
-  position: relative;
-  display: flex; flex-wrap: wrap; gap: 6px;
-  overflow: hidden;
-  align-content: flex-start;
-  min-height: 100%;
-  border-radius: 14px;
-}
-.dragging .tier:hover { box-shadow: inset 0 0 0 1.5px var(--tc), 0 0 34px -8px var(--tc); }
-
 .hint { color: var(--muted); font: 500 12.5px/2.1 var(--font-body); margin: 12px 4px 6px; }
 kbd {
   font: 700 11px/1 var(--font-body);
@@ -475,20 +375,7 @@ kbd {
 .chips .on { background: var(--text); color: var(--on-tier); box-shadow: none; }
 .chips .on:hover { background: var(--text); color: var(--on-tier); }
 .pool-scroll { flex: 1; min-height: 0; }
-.pool-grid {
-  display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); grid-auto-rows: max-content;
-  gap: 12px; align-content: start;
-  padding: 2px 14px 18px 16px;
-}
 .empty { color: var(--muted); text-align: center; padding: 10px 16px 24px; margin: 0; }
-
-.tier-drop :deep(.poster), .pool-grid :deep(.poster) { cursor: grab; }
-.pool-grid :deep(.poster) { width: 100%; content-visibility: auto; contain-intrinsic-size: auto 120px auto 250px; }
-.pool-grid, .tier-drop { contain: layout style; }
-.board:not(.dragging) .tier-drop :deep(.poster:hover), .board:not(.dragging) .pool-grid :deep(.poster:hover) { transform: translateY(-3px); }
-.board:not(.dragging) .tier-drop :deep(.poster:hover .art) {
-  box-shadow: 0 0 0 1.5px var(--accent), 0 0 22px -4px var(--accent-glow), 0 12px 22px -10px rgba(0, 0, 0, 0.9);
-}
 
 /* ── картинка ── */
 .shot-title { display: none; }
@@ -496,14 +383,13 @@ kbd {
 .capture.shot .shot-title { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; padding: 0 4px 10px; }
 .shot-title b { font: 800 34px var(--font-body); letter-spacing: -0.03em; white-space: nowrap; }
 .shot-title span { font: 700 13px var(--font-display); color: var(--muted); white-space: nowrap; }
-.capture.shot .tier { background: rgba(255, 255, 255, 0.05); }
+.capture.shot :deep(.tier) { background: rgba(255, 255, 255, 0.05); }
 
 @media (max-width: 900px) {
   .board { height: auto; grid-template-columns: 1fr; gap: 14px; --card-w: 58px !important; --cols: 4 !important; }
   .resizer { display: none; }
   .tiers-box { overflow: visible; }
   .capture { height: auto; }
-  .tier { flex-basis: auto !important; min-height: calc(var(--card-w) * 1.5 + 16px); }
   .pool-scroll { max-height: 70vh; }
   .cols { display: none; }
   .toolbar { flex-wrap: wrap; }
@@ -511,10 +397,6 @@ kbd {
 }
 @media (max-width: 560px) {
   .board { --card-w: 50px !important; --cols: 3 !important; }
-  .tier { grid-template-columns: 50px minmax(0, 1fr); gap: 6px; padding: 6px; border-radius: 18px; }
-  .tier-label { border-radius: 12px; }
-  .tier-label b { font-size: 26px; }
-  .tier-drop { gap: 4px; }
   .tools { width: 100%; }
   .deck-btn { flex: 1; }
   .name { font-size: 24px; }

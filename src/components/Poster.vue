@@ -2,13 +2,15 @@
 import { computed, ref } from 'vue'
 import { BY_ID } from '../data/movies'
 import { GENRES, GENRE_COLORS } from '../data/meta'
-import { posterUrl } from '../lib/posters'
+import { posterUrl, seen, markSeen } from '../lib/posters'
 
 // label — показать подпись под постером (в каталоге)
-const props = defineProps<{ id: string; badge?: string; big?: boolean; label?: boolean }>()
+const props = defineProps<{ id: string; badge?: string; big?: boolean; label?: boolean; eager?: boolean }>()
 const m = computed(() => BY_ID[props.id])
 const src = computed(() => posterUrl(props.id))
 const broken = ref(false)
+// уже виденную картинку грузим сразу: после переноса постер не мигает пустым кадром
+const loading = computed(() => (props.big || props.eager || seen.has(src.value) ? 'eager' : 'lazy'))
 const g0 = computed(() => m.value.genres[0])
 const gc = computed(() => GENRE_COLORS[g0.value] ?? '#8b5cff')
 const hue = computed(() => ([...props.id].reduce((a, c) => a + c.charCodeAt(0), 0) % 6) * 50 + 260)
@@ -17,7 +19,7 @@ const hue = computed(() => ([...props.id].reduce((a, c) => a + c.charCodeAt(0), 
 <template>
   <div class="poster" :class="{ big, labeled: label }" :style="label ? { '--gc': gc } : undefined" :title="`${m.title} (${m.year})`" :data-id="id">
     <div class="art">
-      <img v-if="src && !broken" :src="src" :alt="m.title" :loading="big ? 'eager' : 'lazy'" decoding="async" draggable="false" @error="broken = true" />
+      <img v-if="src && !broken" :src="src" :alt="m.title" :loading="loading" decoding="auto" draggable="false" @load="markSeen(src)" @error="broken = true" />
       <div v-else class="fallback" :style="{ '--h': hue }">
         <span>{{ m.title }}</span>
       </div>

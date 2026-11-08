@@ -126,7 +126,7 @@ h1, h2, h3 { font-family: var(--font-body); font-weight: 800; letter-spacing: -0
   pointer-events: none;
   z-index: 9999 !important;
 }
-body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select: none; }
+/* во время переноса глобальные классы/курсор не меняем: наследуемый cursor пересчитал бы стили всей страницы */
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

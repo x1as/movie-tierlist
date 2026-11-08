@@ -27,7 +27,9 @@ const persist = () => {
     localStorage.setItem(KEY, JSON.stringify({ v: 1, name: state.name, tiers: state.tiers, isXias: state.isXias }))
   } catch {}
 }
-watch(state, () => { clearTimeout(saveTimer); saveTimer = window.setTimeout(persist, 400) }, { deep: true })
+// запись — в фоне, когда браузер свободен: экран уже показал результат переноса
+const idle = (fn: () => void) => ('requestIdleCallback' in window ? (window as any).requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 200))
+watch(state, () => { clearTimeout(saveTimer); saveTimer = window.setTimeout(() => idle(persist), 300) }, { deep: true })
 window.addEventListener('pagehide', persist)
 
 export const placed = computed(() => {
