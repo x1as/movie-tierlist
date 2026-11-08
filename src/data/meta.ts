@@ -41,3 +41,23 @@ export const KINDS: Record<Kind, string> = {
   a: 'Аниме',
   d: 'Док / шоу',
 }
+
+// Неоновый цвет основного жанра — для фона карточек в каталоге
+export const GENRE_COLORS: Record<string, string> = {
+  act: '#ff4d5e',
+  hero: '#ff2bd6',
+  com: '#ffd23f',
+  sci: '#22e4ff',
+  fan: '#9a6bff',
+  adv: '#2ee59d',
+  dra: '#ff8a6b',
+  rom: '#ff6fb0',
+  cri: '#8fa3ff',
+  thr: '#ff7a1a',
+  mys: '#7a5cff',
+  hor: '#b6ff3b',
+  mar: '#ffa31a',
+  spo: '#3dffc5',
+  fam: '#7dd3fc',
+  doc: '#a3e635',
+}

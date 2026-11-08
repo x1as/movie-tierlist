@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import Sortable from 'sortablejs'
 import Poster from './Poster.vue'
 import QuickRate from './QuickRate.vue'
@@ -14,9 +14,37 @@ const emit = defineEmits<{ open: [id: string] }>()
 const pref = (k: string, d: number) => { try { const v = Number(localStorage.getItem('lt.' + k)); return v || d } catch { return d } }
 const save = (k: string, v: number) => { try { localStorage.setItem('lt.' + k, String(v)) } catch {} }
 const poolW = ref(pref('poolW', 540))
-const cardW = ref(pref('cardW', 80))
+const cols = ref(pref('cols', 4))
 watch(poolW, (v) => save('poolW', v))
-watch(cardW, (v) => save('cardW', v))
+watch(cols, (v) => save('cols', v))
+
+// ── тиры всегда влезают в экран: подбираем общий размер постера под свободное место ──
+const tiersBox = ref<HTMLElement | null>(null)
+const box = reactive({ w: 0, h: 0 })
+let boxRO: ResizeObserver | null = null
+const GAP = 6, ROW_GAP = 10, ROW_PAD = 16, LABEL = 78, LABEL_GAP = 10, MIN_ROW = 74, MAX_W = 118, MIN_W = 22
+const rowsFor = (n: number, w: number, inner: number) => {
+  if (!n) return 0
+  const perRow = Math.max(1, Math.floor((inner + GAP) / (w + GAP)))
+  return Math.ceil(n / perRow)
+}
+const fit = computed(() => {
+  const inner = box.w - LABEL - LABEL_GAP - ROW_PAD
+  const avail = box.h - ROW_GAP * (ALL_TIERS.length - 1)
+  const counts = ALL_TIERS.map((k) => state.tiers[k].length)
+  const need = (w: number) => counts.map((n) => Math.max(MIN_ROW, rowsFor(n, w, inner) * w * 1.5 + Math.max(0, rowsFor(n, w, inner) - 1) * GAP + ROW_PAD))
+  let w = MAX_W
+  if (inner > 0 && avail > 0) {
+    for (; w > MIN_W; w -= 1) if (need(w).reduce((a, b) => a + b, 0) <= avail) break
+  }
+  const heights = need(w)
+  return { w, heights: Object.fromEntries(ALL_TIERS.map((k, i) => [k, heights[i]])) as Record<string, number> }
+})
+onMounted(() => {
+  boxRO = new ResizeObserver(([e]) => { box.w = e.contentRect.width; box.h = e.contentRect.height })
+  if (tiersBox.value) boxRO.observe(tiersBox.value)
+})
+onBeforeUnmount(() => boxRO?.disconnect())
 
 // ── фильтры каталога ──
 const q = ref('')
@@ -188,7 +216,7 @@ async function saveImage() {
     ref="boardEl"
     class="board"
     :class="{ dragging, resizing }"
-    :style="{ '--pool-w': poolW + 'px', '--card-w': cardW + 'px' }"
+    :style="{ '--pool-w': poolW + 'px', '--card-w': fit.w + 'px', '--cols': cols }"
     @click="onClick"
     @mouseover="onOver"
     @mouseleave="hovered = null"
@@ -202,6 +230,7 @@ async function saveImage() {
             <svg viewBox="0 0 24 24"><rect x="8" y="3" width="11" height="15" rx="2.5" transform="rotate(12 13.5 10.5)" /><rect x="4" y="5.5" width="11" height="15" rx="2.5" /></svg>
             Карточки <small>{{ pool.length }}</small>
           </button>
+          <span class="icon-btn help" tabindex="0" aria-label="Подсказка">?<span class="tip">Тащи постеры или жми на них. Быстрее: наведи и нажми <kbd>S</kbd><kbd>A</kbd><kbd>B</kbd><kbd>C</kbd><kbd>D</kbd>, <kbd>X</kbd> — обратно в каталог, <kbd>Ctrl Z</kbd> — отменить.</span></span>
           <button class="icon-btn" :disabled="!canUndo" title="Отменить (Ctrl+Z)" aria-label="Отменить" @click="undo">
             <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
           </button>
@@ -212,24 +241,20 @@ async function saveImage() {
         </div>
       </div>
 
-      <ScrollArea class="tiers-scroll">
+      <div ref="tiersBox" class="tiers-box">
         <div ref="capture" class="capture">
           <div class="shot-title">
             <b>{{ state.name ? `Тирлист: ${state.name}` : 'Мой тирлист' }}</b>
             <span>КИНОТИР · x1as.github.io/movie-tierlist</span>
           </div>
-          <div v-for="k in ALL_TIERS" :key="k" class="tier" :data-tier="k">
+          <div v-for="k in ALL_TIERS" :key="k" class="tier" :data-tier="k" :style="{ flexBasis: fit.heights[k] + 'px' }">
             <div class="tier-label" :title="TIERS[k].note"><b>{{ TIERS[k].label }}</b></div>
             <div :ref="addList" class="tier-drop" :data-list="k">
               <Poster v-for="id in state.tiers[k]" :key="id" :id="id" />
             </div>
           </div>
         </div>
-        <p class="hint">
-          Тащи постеры или жми на них. Быстрее: наведи и нажми <kbd>S</kbd><kbd>A</kbd><kbd>B</kbd><kbd>C</kbd><kbd>D</kbd> ·
-          <kbd>X</kbd> вернуть в каталог · <kbd>Ctrl Z</kbd> отменить
-        </p>
-      </ScrollArea>
+      </div>
     </div>
 
     <div
@@ -251,10 +276,9 @@ async function saveImage() {
             <h2>Каталог</h2>
             <p>не смотрел или ещё не оценил · <b>{{ poolIds.length }}</b> из {{ MOVIES.length }}</p>
           </div>
-          <label class="size" title="Размер постеров">
-            <svg viewBox="0 0 24 24"><rect x="3" y="7" width="7" height="10" rx="2" /><rect x="13" y="3" width="8" height="14" rx="2" /></svg>
-            <input v-model.number="cardW" type="range" min="56" max="128" step="2" aria-label="Размер постеров" />
-          </label>
+          <div class="cols" role="group" aria-label="Карточек в строке">
+            <button v-for="n in [3, 4, 5, 6]" :key="n" :class="{ on: cols === n }" :title="`${n} в строке`" @click="cols = n">{{ n }}</button>
+          </div>
         </div>
         <label class="search">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
@@ -325,10 +349,9 @@ async function saveImage() {
 .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line-2); border-top-color: var(--accent); animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── тиры: неоновые объёмные плитки ── */
-.tiers-scroll { flex: 1; }
-.tiers-scroll :deep(.sa-vp) { padding-right: 10px; }
-.capture { display: flex; flex-direction: column; gap: 10px; padding: 2px 0 4px; }
+/* ── тиры: неоновые объёмные плитки, всегда влезают без скролла ── */
+.tiers-box { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
+.capture { display: flex; flex-direction: column; gap: 10px; min-height: 100%; }
 .tier {
   position: relative;
   display: grid;
@@ -338,7 +361,8 @@ async function saveImage() {
   border-radius: 22px;
   background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--line), 0 18px 40px -26px rgba(0, 0, 0, 0.9);
-  min-height: calc(var(--card-w) * 1.5 + 16px);
+  flex: 1 0 auto;
+  min-height: 0;
   transition: box-shadow 0.18s;
 }
 .tier::before {
@@ -377,6 +401,7 @@ async function saveImage() {
 .tier-drop {
   position: relative;
   display: flex; flex-wrap: wrap; gap: 6px;
+  overflow: hidden;
   align-content: flex-start;
   min-height: 100%;
   border-radius: 14px;
@@ -412,9 +437,19 @@ kbd {
 .pool-title h2 { margin: 0; font: 800 24px/1.05 var(--font-body); letter-spacing: -0.03em; }
 .pool-title p { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); }
 .pool-title p b { color: var(--text); font-variant-numeric: tabular-nums; }
-.size { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--muted); padding-top: 4px; }
-.size svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
-.size input { width: 110px; accent-color: var(--accent); }
+.cols { margin-left: auto; display: flex; padding: 3px; gap: 2px; border-radius: 12px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.cols button { width: 30px; height: 28px; border: 0; border-radius: 9px; background: transparent; color: var(--text-2); font: 700 12.5px var(--font-body); cursor: pointer; }
+.cols button:hover { color: var(--text); }
+.cols button.on { background: var(--text); color: var(--on-tier); }
+.help { position: relative; font: 800 15px var(--font-body); cursor: help; }
+.help .tip {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 40; width: 300px;
+  padding: 12px 14px; border-radius: 16px;
+  background: var(--surface-solid); box-shadow: var(--shadow-lg);
+  font: 500 13px/1.9 var(--font-body); color: var(--text-2); text-align: left;
+  opacity: 0; transform: translateY(-4px); pointer-events: none; transition: opacity 0.15s, transform 0.15s;
+}
+.help:hover .tip, .help:focus .tip { opacity: 1; transform: none; }
 .search {
   display: flex; align-items: center; gap: 8px;
   height: 44px; padding: 0 14px;
@@ -441,39 +476,41 @@ kbd {
 .chips .on:hover { background: var(--text); color: var(--on-tier); }
 .pool-scroll { flex: 1; min-height: 0; }
 .pool-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--card-w) + 8px), 1fr)); grid-auto-rows: max-content;
-  gap: 8px; align-content: start;
+  display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); grid-auto-rows: max-content;
+  gap: 12px; align-content: start;
   padding: 2px 14px 18px 16px;
 }
 .empty { color: var(--muted); text-align: center; padding: 10px 16px 24px; margin: 0; }
 
 .tier-drop :deep(.poster), .pool-grid :deep(.poster) { cursor: grab; }
-.pool-grid :deep(.poster) { width: 100%; content-visibility: auto; contain-intrinsic-size: auto 90px auto 170px; }
+.pool-grid :deep(.poster) { width: 100%; content-visibility: auto; contain-intrinsic-size: auto 120px auto 250px; }
 .pool-grid, .tier-drop { contain: layout style; }
 .board:not(.dragging) .tier-drop :deep(.poster:hover), .board:not(.dragging) .pool-grid :deep(.poster:hover) { transform: translateY(-3px); }
-.board:not(.dragging) .tier-drop :deep(.poster:hover .art), .board:not(.dragging) .pool-grid :deep(.poster:hover .art) {
+.board:not(.dragging) .tier-drop :deep(.poster:hover .art) {
   box-shadow: 0 0 0 1.5px var(--accent), 0 0 22px -4px var(--accent-glow), 0 12px 22px -10px rgba(0, 0, 0, 0.9);
 }
 
 /* ── картинка ── */
 .shot-title { display: none; }
-.capture.shot { padding: 26px; width: 1200px; background: radial-gradient(900px 500px at 0% 0%, rgba(255, 43, 214, 0.22), transparent 70%), radial-gradient(900px 600px at 100% 100%, rgba(34, 228, 255, 0.18), transparent 70%), #0b0716; }
+.capture.shot { height: auto; padding: 26px; width: 1200px; background: radial-gradient(900px 500px at 0% 0%, rgba(255, 43, 214, 0.22), transparent 70%), radial-gradient(900px 600px at 100% 100%, rgba(34, 228, 255, 0.18), transparent 70%), #0b0716; }
 .capture.shot .shot-title { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; padding: 0 4px 10px; }
 .shot-title b { font: 800 34px var(--font-body); letter-spacing: -0.03em; white-space: nowrap; }
 .shot-title span { font: 700 13px var(--font-display); color: var(--muted); white-space: nowrap; }
 .capture.shot .tier { background: rgba(255, 255, 255, 0.05); }
 
 @media (max-width: 900px) {
-  .board { height: auto; grid-template-columns: 1fr; gap: 14px; --card-w: 58px !important; }
+  .board { height: auto; grid-template-columns: 1fr; gap: 14px; --card-w: 58px !important; --cols: 4 !important; }
   .resizer { display: none; }
-  .tiers-scroll :deep(.sa-vp) { overflow: visible; padding-right: 0; -webkit-mask-image: none; mask-image: none; }
-  .pool-scroll { max-height: 66vh; }
-  .size { display: none; }
+  .tiers-box { overflow: visible; }
+  .capture { height: auto; }
+  .tier { flex-basis: auto !important; min-height: calc(var(--card-w) * 1.5 + 16px); }
+  .pool-scroll { max-height: 70vh; }
+  .cols { display: none; }
   .toolbar { flex-wrap: wrap; }
   .pill { order: 3; }
 }
 @media (max-width: 560px) {
-  .board { --card-w: 50px !important; }
+  .board { --card-w: 50px !important; --cols: 3 !important; }
   .tier { grid-template-columns: 50px minmax(0, 1fr); gap: 6px; padding: 6px; border-radius: 18px; }
   .tier-label { border-radius: 12px; }
   .tier-label b { font-size: 26px; }

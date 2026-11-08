@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { BY_ID } from '../data/movies'
+import { GENRES, GENRE_COLORS } from '../data/meta'
 import { posterUrl } from '../lib/posters'
 
 // label — показать подпись под постером (в каталоге)
@@ -8,11 +9,13 @@ const props = defineProps<{ id: string; badge?: string; big?: boolean; label?: b
 const m = computed(() => BY_ID[props.id])
 const src = computed(() => posterUrl(props.id))
 const broken = ref(false)
+const g0 = computed(() => m.value.genres[0])
+const gc = computed(() => GENRE_COLORS[g0.value] ?? '#8b5cff')
 const hue = computed(() => ([...props.id].reduce((a, c) => a + c.charCodeAt(0), 0) % 6) * 50 + 260)
 </script>
 
 <template>
-  <div class="poster" :class="{ big, labeled: label }" :title="`${m.title} (${m.year})`" :data-id="id">
+  <div class="poster" :class="{ big, labeled: label }" :style="label ? { '--gc': gc } : undefined" :title="`${m.title} (${m.year})`" :data-id="id">
     <div class="art">
       <img v-if="src && !broken" :src="src" :alt="m.title" :loading="big ? 'eager' : 'lazy'" decoding="async" draggable="false" @error="broken = true" />
       <div v-else class="fallback" :style="{ '--h': hue }">
@@ -23,7 +26,7 @@ const hue = computed(() => ([...props.id].reduce((a, c) => a + c.charCodeAt(0), 
     </div>
     <div v-if="label" class="label">
       <b>{{ m.title }}</b>
-      <small>{{ m.year }}</small>
+      <span class="meta"><i>{{ GENRES[g0] }}</i><small>{{ m.year }}</small></span>
     </div>
   </div>
 </template>
@@ -89,14 +92,29 @@ img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-even
 .badge[data-tier='C'] { --tc: var(--t-c); }
 .badge[data-tier='D'] { --tc: var(--t-d); }
 
-/* подпись в каталоге: лёгкая стеклянная обёртка с коротким названием */
-.labeled { border-radius: 14px; padding: 4px 4px 0; background: rgba(255, 255, 255, 0.04); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07); }
-.labeled .art { border-radius: 10px; }
-.label { padding: 6px 3px 7px; min-width: 0; }
+/* карточка каталога: обёртка в цвете основного жанра */
+.labeled {
+  border-radius: 18px; padding: 5px 5px 0;
+  background:
+    radial-gradient(120% 70% at 50% 0%, color-mix(in oklab, var(--gc) 45%, transparent), transparent 70%),
+    linear-gradient(170deg, color-mix(in oklab, var(--gc) 32%, #120e22), color-mix(in oklab, var(--gc) 10%, #0b0818) 70%);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--gc) 45%, transparent), inset 0 1px 0 color-mix(in oklab, var(--gc) 60%, white 10%);
+  transition: transform 0.16s cubic-bezier(.2,.8,.2,1), box-shadow 0.2s;
+}
+.labeled:hover { box-shadow: inset 0 0 0 1.5px var(--gc), 0 0 26px -6px var(--gc); }
+.labeled .art { border-radius: 13px; box-shadow: 0 8px 18px -10px rgba(0, 0, 0, 0.9); }
+.label { padding: 8px 4px 9px; min-width: 0; }
 .label b {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-  font: 600 11.5px/1.2 var(--font-body); color: var(--text);
+  font: 700 13px/1.2 var(--font-body); color: #fff; letter-spacing: -0.01em;
   min-height: 2.4em;
 }
-.label small { display: block; margin-top: 2px; font: 500 10.5px var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.label .meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; }
+.label .meta i {
+  font: 600 10.5px/1 var(--font-body); font-style: normal;
+  color: var(--gc); background: color-mix(in oklab, var(--gc) 16%, transparent);
+  padding: 4px 7px; border-radius: 99px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.label .meta small { font: 600 11px var(--font-body); color: rgba(255, 255, 255, 0.55); font-variant-numeric: tabular-nums; flex: none; }
 </style>
