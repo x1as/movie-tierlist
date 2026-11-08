@@ -20,15 +20,15 @@ function initial(): { name: string; tiers: Tiers; isXias: boolean } {
 
 export const state = reactive(initial())
 
-watch(
-  state,
-  () => {
-    try {
-      localStorage.setItem(KEY, JSON.stringify({ v: 1, name: state.name, tiers: state.tiers, isXias: state.isXias }))
-    } catch {}
-  },
-  { deep: true },
-)
+// Сохранение откладываем, чтобы запись не попадала в кадр с перетаскиванием
+let saveTimer = 0
+const persist = () => {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ v: 1, name: state.name, tiers: state.tiers, isXias: state.isXias }))
+  } catch {}
+}
+watch(state, () => { clearTimeout(saveTimer); saveTimer = window.setTimeout(persist, 400) }, { deep: true })
+window.addEventListener('pagehide', persist)
 
 export const placed = computed(() => {
   const m = new Map<string, TierKey>()

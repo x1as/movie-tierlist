@@ -133,13 +133,13 @@ h3 { margin: 0 0 4px; font: 700 26px/1.12 var(--font-display); }
 .meta { margin: 0 0 10px; color: var(--muted); font-weight: 600; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tags span { font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); }
-.src { font: 600 19px var(--font-hand); color: var(--accent); margin: 12px 0 0; }
+.src { font: 600 13px var(--font-body); letter-spacing: 0.02em; color: var(--accent); margin: 12px 0 0; }
 .fin { text-align: center; font: 700 22px var(--font-display); padding: 40px 0; margin: 0; }
 .tiers { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
 .tiers button {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   padding: 12px 2px; border-radius: 12px; border: 0; cursor: pointer;
-  background: var(--tc); color: #24170f;
+  background: var(--tc); color: var(--on-tier);
   transition: transform 0.1s ease, filter 0.1s;
 }
 .tiers button:hover { filter: brightness(1.08); transform: translateY(-2px); }

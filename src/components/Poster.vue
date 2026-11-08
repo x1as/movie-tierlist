@@ -13,7 +13,7 @@ const hue = computed(() => [...props.id].reduce((a, c) => a + c.charCodeAt(0), 0
 
 <template>
   <div class="poster" :class="{ big }" :title="`${m.title} (${m.year})`" :data-id="id">
-    <img v-if="src && !broken" :src="src" :alt="m.title" :loading="big ? 'eager' : 'lazy'" draggable="false" @error="broken = true" />
+    <img v-if="src && !broken" :src="src" :alt="m.title" :loading="big ? 'eager' : 'lazy'" decoding="async" draggable="false" @error="broken = true" />
     <div v-else class="fallback" :style="{ '--h': hue }">
       <span>{{ m.title }}</span>
       <small>{{ m.year }}</small>
@@ -34,6 +34,7 @@ const hue = computed(() => [...props.id].reduce((a, c) => a + c.charCodeAt(0), 0
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 6px 14px -6px rgba(0, 0, 0, 0.6);
   flex: none;
   user-select: none;
+  contain: layout paint style;
 }
 .poster.big { width: 100%; border-radius: 12px; }
 img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
@@ -70,7 +71,7 @@ img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-even
   border-radius: 6px;
   display: grid; place-items: center;
   font: 800 12px/1 var(--font-body);
-  color: #1d130d;
+  color: var(--on-tier);
   background: var(--tier-color, var(--accent));
 }
 .badge[data-tier='S'] { --tier-color: var(--t-s); }

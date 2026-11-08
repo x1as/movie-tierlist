@@ -33,7 +33,7 @@ defineProps<{ p: Profile; who: string; tone?: 'a' | 'b' }>()
   overflow: hidden;
 }
 .type.b { --c: var(--sage); }
-.who { margin: 0; font: 600 20px var(--font-hand); color: var(--c); }
+.who { margin: 0; font: 600 13px var(--font-body); letter-spacing: 0.02em; color: var(--c); }
 .code { display: flex; gap: 6px; margin: 6px 0 10px; }
 .code span {
   width: 44px; height: 52px; display: grid; place-items: center;

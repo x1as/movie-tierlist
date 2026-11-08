@@ -161,7 +161,7 @@ const pick = (e: MouseEvent) => { const id = (e.target as HTMLElement).closest('
 
 <style scoped>
 .mirror { display: flex; flex-direction: column; gap: 16px; }
-.eyebrow { margin: 0; font: 600 20px var(--font-hand); color: var(--accent); }
+.eyebrow { margin: 0; font: 600 13px var(--font-body); letter-spacing: 0.02em; color: var(--accent); }
 h1 { margin: 0 0 6px; font: 700 40px/1.1 var(--font-display); }
 h2 { margin: 0 0 14px; font: 700 22px/1.2 var(--font-display); }
 h2 small { font: 700 13px var(--font-body); color: var(--muted); margin-left: 6px; }
@@ -206,7 +206,7 @@ textarea { width: 100%; background: var(--bg-2); color: var(--text); border: 1px
 .posters { --card-w: 64px; display: flex; flex-wrap: wrap; gap: 8px; cursor: pointer; }
 .pp { position: relative; }
 .pair { position: absolute; left: 3px; right: 3px; bottom: 3px; display: flex; justify-content: space-between; }
-.pair i { font: 800 11px/1 var(--font-body); font-style: normal; padding: 3px 5px; border-radius: 5px; color: #24170f; }
+.pair i { font: 800 11px/1 var(--font-body); font-style: normal; padding: 3px 5px; border-radius: 5px; color: var(--on-tier); }
 .pair i[data-c='a'] { background: var(--accent); }
 .pair i[data-c='b'] { background: var(--sage); }
 @media (max-width: 760px) {

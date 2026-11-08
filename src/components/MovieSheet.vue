@@ -61,13 +61,13 @@ h3 { margin: 0 28px 4px 0; font: 700 24px/1.15 var(--font-display); }
 .meta { margin: 0 0 10px; color: var(--muted); font-weight: 600; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tags span { font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); }
-.src { font: 600 19px var(--font-hand); color: var(--accent); margin: 12px 0; }
+.src { font: 600 13px var(--font-body); letter-spacing: 0.02em; color: var(--accent); margin: 12px 0; }
 .pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .pick button {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   padding: 8px 4px; border-radius: 10px; cursor: pointer;
   border: 2px solid transparent;
-  background: var(--tc); color: #24170f;
+  background: var(--tc); color: var(--on-tier);
 }
 .pick button b { font: 700 20px/1 var(--font-display); }
 .pick button small { font-size: 11px; font-weight: 700; opacity: 0.8; }

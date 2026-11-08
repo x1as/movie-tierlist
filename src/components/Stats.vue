@@ -109,11 +109,11 @@ h2 { margin: 0 0 14px; font: 700 22px/1.2 var(--font-display); }
 .empty p { color: var(--text-2); }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
-.tile span { font: 600 17px var(--font-hand); color: var(--accent); }
+.tile span { font: 600 13px var(--font-body); letter-spacing: 0.02em; color: var(--accent); }
 .tile b { font: 700 21px/1.15 var(--font-display); }
 .tile small { color: var(--muted); font-weight: 600; }
 .dist { display: flex; gap: 2px; height: 34px; border-radius: 10px; overflow: hidden; }
-.seg { display: grid; place-items: center; min-width: 4px; font: 800 12px var(--font-body); color: #24170f; background: var(--tc); flex-basis: 0; }
+.seg { display: grid; place-items: center; min-width: 4px; font: 800 12px var(--font-body); color: var(--on-tier); background: var(--tc); flex-basis: 0; }
 .seg[data-tier='S'] { --tc: var(--t-s); }
 .seg[data-tier='A'] { --tc: var(--t-a); }
 .seg[data-tier='B'] { --tc: var(--t-b); }
